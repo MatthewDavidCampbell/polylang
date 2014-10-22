@@ -99,11 +99,14 @@ class PLL_Settings {
 				$data = $this->get_strings();
 
 				$selected = empty($_REQUEST['group']) ? -1 : $_REQUEST['group'];
-				foreach ($data as $key=>$row) {
-					$groups[] = $row['context']; // get the groups
+				foreach ($data as $key => $row) {
+					// $groups[] = $row['context']; // get the groups
+					$group = ( empty($row['context']) ) ? __('no text domain', 'pll') : $row['context'];
+					$groups[] =  $group; // get the groups
+
 
 					// filter for search string
-					if (($selected !=-1 && $row['context'] != $selected) || (!empty($_REQUEST['s']) && stripos($row['name'], $_REQUEST['s']) === false && stripos($row['string'], $_REQUEST['s']) === false))
+					if (($selected !=-1 && $group != $selected) || (!empty($_REQUEST['s']) && stripos($row['name'], $_REQUEST['s']) === false && stripos($row['string'], $_REQUEST['s']) === false))
 						unset ($data[$key]);
 				}
 
@@ -118,13 +121,48 @@ class PLL_Settings {
 					$mo = new PLL_MO();
 					$mo->import_from_db($language);
 					foreach ($data as $key=>$row) {
-						$data[$key]['translations'][$language->name] = $mo->translate($row['string']);
+						$data[$key]['translations'][$language->name] = $mo->translate( $row['string'], $row['context'] );
 						$data[$key]['row'] = $key; // store the row number for convenience
 					}
 				}
 
 				$string_table = new PLL_Table_String($groups, $selected);
 				$string_table->prepare_items($data);
+
+				// load themes
+				$themes = wp_get_themes();
+				$data = array();
+				foreach ($themes as $key => $theme) {
+					$data[] = array(
+						'row' => $theme->Name,
+						'file' => $theme->Name
+					);
+				}
+				$themes_table = new PLL_Table_Themes_Plugins('themes-strings');
+				$themes_table->prepare_items($data);
+
+				// load plugins
+				$plugins = get_plugins();
+		        $active_plugins = get_option('active_plugins'); 
+		        $mu_plugins = wp_get_mu_plugins();
+		        foreach($mu_plugins as $p){
+		            $pfile = basename($p);
+		            $plugins[$pfile] = array('Name' => 'MU :: ' . $pfile);
+		            $mu_plugins_base[$pfile] = true;
+		        }
+		        $wpmu_sitewide_plugins = (array) maybe_unserialize( get_site_option( 'active_sitewide_plugins' ) );
+
+		        $data = array();
+		        foreach ($plugins as $key => $plugin) {
+		        	$data[] = array(
+						'row' => $plugin['Name'],
+						'file' => $plugin['Name']
+					);
+		        }
+
+				$plugins_table = new PLL_Table_Themes_Plugins('plugins-strings');
+				$plugins_table->prepare_items($data);
+
 				break;
 
 			case 'settings':
@@ -177,9 +215,60 @@ class PLL_Settings {
 				$this->redirect(); // to refresh the page (possible thanks to the $_GET['noheader']=true)
 				break;
 
+			case 'load-strings':
+				check_admin_referer( 'import-strings-translation', '_wpnonce_import-strings-translation' );
+
+				global $polylang;
+
+				$type = isset($_REQUEST['pll_load_type']) ? $_REQUEST['pll_load_type'] : '';
+
+
+				// load strings
+				if ( $themes_table->current_action() == 'load_strings' && !empty($_REQUEST['file']) ) {
+					
+					$strings_manager = new PLL_Admin_Filters_Strings($polylang);
+					if ($type === 'load-themes-strings') {
+						$themes = wp_get_themes();
+
+						foreach ($themes as $theme) {
+							if ( !in_array($theme->Name, $_REQUEST['file']) )
+								continue;
+
+							$path = $theme->get_template_directory();
+							$strings_manager->load_strings($path);
+						}
+					}
+					else if ($type === 'load-plugins-strings') {
+						$plugins = get_plugins();
+				        $active_plugins = get_option('active_plugins'); 
+				        $mu_plugins = wp_get_mu_plugins();
+				        foreach($mu_plugins as $p){
+				            $pfile = basename($p);
+				            $plugins[$pfile] = array('Name' => 'MU :: ' . $pfile);
+				            $mu_plugins_base[$pfile] = true;
+				        }
+				        $wpmu_sitewide_plugins = (array) maybe_unserialize( get_site_option( 'active_sitewide_plugins' ) );
+
+				        foreach ($plugins as $base => $plugin) {
+							if ( !in_array($plugin['Name'], $_REQUEST['file']) )
+								continue;
+
+							$path = plugin_dir_path( ABSPATH . 'wp-content/plugins/' . $base );
+
+							$strings_manager->load_strings($path);
+						}
+					}
+					else
+						die();
+
+					$this->redirect();
+				}	
+
+
 			case 'string-translation':
 				if (!empty($_REQUEST['submit'])) {
 					check_admin_referer( 'string-translation', '_wpnonce_string-translation' );
+					
 					$strings = $this->get_strings();
 
 					foreach ($this->model->get_languages_list() as $language) {
@@ -189,16 +278,23 @@ class PLL_Settings {
 						$mo = new PLL_MO();
 						$mo->import_from_db($language);
 
-						foreach ($_POST['translation'][$language->name] as $key=>$translation)
-							$mo->add_entry($mo->make_entry($strings[$key]['string'], stripslashes($translation)));
+						foreach ($_POST['translation'][$language->name] as $key => $translation) {
+							if (!empty($strings[$key]['context'])) {
+								// $key = substr( $key, strlen() )
+								$mo->add_entry($mo->make_entry($strings[$key]['context'] . chr(4) . $strings[$key]['string'], stripslashes($translation)));
+							}
+							else
+								$mo->add_entry($mo->make_entry($strings[$key]['string'], stripslashes($translation)));
+						}
 
 						// clean database (removes all strings which were registered some day but are no more)
 						if (!empty($_POST['clean'])) {
 							$new_mo = new PLL_MO();
 
-							foreach ($strings as $string)
-								$new_mo->add_entry($mo->make_entry($string['string'], $mo->translate($string['string'])));
+							foreach ($strings as $string) 
+								$new_mo->add_entry($mo->make_entry($strings[$key]['context'] . chr(4) . $strings[$key]['string'], $mo->translate($string['string'])));
 						}
+
 
 						isset($new_mo) ? $new_mo->export_to_db($language) : $mo->export_to_db($language);
 					}
@@ -212,8 +308,15 @@ class PLL_Settings {
 					check_admin_referer( 'string-translation', '_wpnonce_string-translation' );
 					$strings = $this->get_strings();
 
-					foreach ($_REQUEST['strings'] as $key)
+					foreach ($_REQUEST['strings'] as $key) {
+						$string_exists_in_polylang = get_page_by_title(  $strings[$key]['name'], 'OBJECT', 'polylang_strings' );
+
+					    if ( !is_null( $string_exists_in_polylang ) ) {
+							wp_delete_post( $string_exists_in_polylang->ID, true );
+						}
+
 						icl_unregister_string($strings[$key]['context'], $strings[$key]['name']);
+					}
 				}
 
 				// to refresh the page (possible thanks to the $_GET['noheader']=true)
@@ -333,6 +436,7 @@ class PLL_Settings {
 
 		// allow plugins to modify our list of strings, mainly for use by our PLL_WPML_Compat class
 		$this->strings = apply_filters('pll_get_strings', $this->strings);
+
 		return $this->strings;
 	}
 

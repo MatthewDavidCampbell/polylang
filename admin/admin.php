@@ -79,6 +79,8 @@ class PLL_Admin extends PLL_Base {
 		// setup filters for admin pages
 		if (!PLL_SETTINGS)
 			add_action('wp_loaded', array(&$this, 'add_filters'));
+		else
+			add_action('wp_loaded', array(&$this, 'add_admin_filters'));
 	}
 
 	/*
@@ -111,6 +113,7 @@ class PLL_Admin extends PLL_Base {
 			'post'  => array( array('post', 'media', 'async-upload', 'edit'),  array('jquery', 'wp-ajax-response', 'inline-edit-post', 'post', 'jquery-ui-autocomplete'), 0 , 0),
 			'term'  => array( array('edit-tags'), array('jquery', 'wp-ajax-response', 'jquery-ui-autocomplete'), 0, 1),
 			'user'  => array( array('profile', 'user-edit'), array('jquery'), 0 , 0),
+			'get-strings'  => array( array('settings_page_mlang'), array('jquery', 'wp-ajax-response'), 0 , 0)
 		);
 
 		foreach ($scripts as $script => $v)
@@ -234,11 +237,27 @@ class PLL_Admin extends PLL_Base {
 	 */
 	public function add_filters() {
 		// all these are separated just for convenience and maintainability
-		$classes = array('Filters', 'Filters_Columns', 'Filters_Post', 'Filters_Term', 'Nav_Menu', 'Sync');
+		$classes = array('Filters', 'Filters_Columns', 'Filters_Post', 'Filters_Term', 'Nav_Menu', 'Sync', 'Filters_Strings');
 
 		// don't load media filters if option is disabled or if user has no right
 		if ($this->options['media_support'] && ($obj = get_post_type_object('attachment')) && (current_user_can($obj->cap->edit_posts) || current_user_can($obj->cap->create_posts)))
 			$classes[] = 'Filters_Media';
+
+		foreach ($classes as $class) {
+			$obj = strtolower($class);
+			$class = apply_filters('pll_' . $obj, 'PLL_Admin_' . $class);
+			$this->$obj = new $class($this);
+		}
+	}
+
+	/*
+	 * setup filters for admin settings area
+	 *
+	 * @since 1.6 - forked
+	 */
+	public function add_admin_filters() {
+		// all these are separated just for convenience and maintainability
+		$classes = array('Filters_Strings');
 
 		foreach ($classes as $class) {
 			$obj = strtolower($class);

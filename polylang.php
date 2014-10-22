@@ -4,7 +4,7 @@ Plugin Name: Polylang
 Plugin URI: http://polylang.wordpress.com/
 Version: 1.5.6
 Author: Frédéric Demarle
-Description: Adds multilingual capability to WordPress
+Description: Adds multilingual capability to WordPress / Custom version, please do not update this plugin
 Text Domain: polylang
 Domain Path: /languages
 */
@@ -99,8 +99,11 @@ class Polylang {
 		if (!defined('PLL_ADMIN'))
 			define('PLL_ADMIN', defined('DOING_CRON') || (is_admin() && !PLL_AJAX_ON_FRONT));
 
-		if (!defined('PLL_SETTINGS'))
-			define('PLL_SETTINGS', is_admin() && isset($_GET['page']) && $_GET['page'] == 'mlang');
+		if (!defined('PLL_SETTINGS')) {
+			$is_doing_get_strings = ( is_admin() && defined('DOING_AJAX') && DOING_AJAX && isset($_REQUEST['action']) && in_array($_REQUEST['action'], array('get-strings') ) );
+			define('PLL_SETTINGS', ( is_admin() && isset($_GET['page']) && $_GET['page'] == 'mlang' ) || $is_doing_get_strings );
+			// define('PLL_SETTINGS', is_admin() && isset($_GET['page']) && $_GET['page'] == 'mlang' );
+		}
 
 		// blog creation on multisite
 		add_action('wpmu_new_blog', array(&$this, 'wpmu_new_blog'), 5); // before WP attempts to send mails which can break on some PHP versions

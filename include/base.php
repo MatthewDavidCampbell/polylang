@@ -66,7 +66,25 @@ abstract class PLL_Base {
 	public function load_strings_translations() {
 		$mo = new PLL_MO();
 		$mo->import_from_db($this->model->get_language(get_locale()));
-		$GLOBALS['l10n']['pll_string'] = &$mo;
+
+		// $GLOBALS['l10n']['pll_string'] = &$mo;
+
+		
+		$text_domains = array();
+		foreach ($mo->entries as $entry) {
+			$text_domains[] = $entry->context;
+		}
+		array_unique( $text_domains );
+
+		foreach ($text_domains as $d) {
+			$GLOBALS['l10n'][$d] = new PLL_MO();
+
+			foreach ($mo->entries as $entry) {
+				if ($entry->context === $d) {
+					$GLOBALS['l10n'][$d]->entries[$entry->singular] = $entry;
+				}
+			}
+		}
 	}
 
 	/*

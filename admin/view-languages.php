@@ -143,6 +143,25 @@ case 'strings': ?>
 		<p><?php _e('Use this to remove unused strings from database, for example after a plugin has been uninstalled.', 'polylang');?></p><?php
 		submit_button(); // since WP 3.1 ?>
 	</form>
+	<hr />
+	<form id="theme-translation" method="post" action="admin.php?page=mlang&amp;tab=strings&amp;noheader=true">
+		<h3>Rechercher les chaînes à traduire dans les thèmes</h3>
+		<!--<input id="pll_scan_theme_and_plugins" type="button" class="button-primary" value="Analyser les textes du thème">-->
+		<input type="hidden" name="pll_action" value="load-strings" />
+		<input type="hidden" name="pll_load_type" value="load-themes-strings" /><?php
+		wp_nonce_field('import-strings-translation', '_wpnonce_import-strings-translation');
+		$themes_table->display(); ?><br /><br />
+	</form>
+	<hr />
+	<form id="theme-translation" method="post" action="admin.php?page=mlang&amp;tab=strings&amp;noheader=true">
+		<h3>Rechercher les chaînes à traduire dans les plugins</h3>
+		<input type="hidden" name="pll_action" value="load-strings" />
+		<input type="hidden" name="pll_load_type" value="load-plugins-strings" />
+		<?php
+		wp_nonce_field('import-strings-translation', '_wpnonce_import-strings-translation');
+		$plugins_table->display(); ?>
+	</form>
+	
 </div><?php
 break;
 

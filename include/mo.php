@@ -29,14 +29,17 @@ class PLL_MO extends MO {
 
 		// would be convenient to store the whole object but it would take a huge space in DB
 		// so let's keep only the strings in an array
+
 		$strings = array();
-		foreach ($this->entries as $entry)
-			$strings[] = array($entry->singular, $this->translate($entry->singular));
+		foreach ($this->entries as $entry) {
+			$strings[] = array($entry->singular, $this->translate($entry->singular, $entry->context), $entry->context);
+		}
+
 
 		$post = get_post($lang->mo_id, ARRAY_A); // wp_insert_post wants an array
 
 		if (empty($post))
-				$GLOBALS['polylang']->model->clean_languages_cache(); // to set mo_id
+			$GLOBALS['polylang']->model->clean_languages_cache(); // to set mo_id
 
 		$post['post_title'] = 'polylang_mo_' . $lang->term_id;
 		// json_encode would take less space but is slower to decode
@@ -59,8 +62,8 @@ class PLL_MO extends MO {
 			$post = get_post($lang->mo_id, OBJECT);
 			$strings = unserialize($post->post_content);
 			if (is_array($strings)) {
-				foreach ($strings as $msg)
-					$this->add_entry($this->make_entry($msg[0], $msg[1]));
+				foreach ($strings as $msg) 
+					$this->add_entry($this->make_entry($msg[2] .chr(4) . $msg[0], $msg[1]));
 			}
 		}
 	}

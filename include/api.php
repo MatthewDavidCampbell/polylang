@@ -114,8 +114,10 @@ function pll_home_url($lang = '') {
  */
 function pll_register_string($name, $string, $context = 'polylang', $multiline = false) {
 	global $polylang;
+
 	if ($polylang instanceof PLL_Admin && !empty($polylang->settings_page))
 		$polylang->settings_page->register_string($name, $string, $context, $multiline);
+	
 }
 
 /*

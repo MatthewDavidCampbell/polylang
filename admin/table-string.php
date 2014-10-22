@@ -53,11 +53,25 @@ class PLL_Table_String extends WP_List_Table {
 	 * @return string
 	 */
 	function column_cb($item){
+		// print_r($item);
 		return sprintf(
 			'<input type="checkbox" name="strings[]" value="%s" %s />',
 			esc_attr($item['row']),
-			empty($item['icl']) ? 'disabled' : '' // only strings registered with WPML API can be removed
+			!empty($item['icl']) || ( isset( $item['can_be_removed'] ) && $item['can_be_removed'] ) ? '' : 'disabled' // only strings registered with WPML API can be removed
 		);
+	}
+
+
+	/*
+	 * displays the context
+	 *
+	 * @since 1.6 - forked
+	 *
+	 * @param array $item
+	 * @return string
+	 */
+	function column_context($item) {
+		return ( empty($item['context']) ) ? __('no text domain', 'pll') : $item['context']; // don't interpret special chars for the string column
 	}
 
 	/*
@@ -106,7 +120,7 @@ class PLL_Table_String extends WP_List_Table {
 		return array(
 			'cb'           => '<input type="checkbox" />', //checkbox
 			'context'      => __('Group', 'polylang'),
-			'name'         => __('Name', 'polylang'),
+			// 'name'         => __('Name', 'polylang'),
 			'string'       => __('String', 'polylang'),
 			'translations' => __('Translations', 'polylang'),
 		);
@@ -122,7 +136,7 @@ class PLL_Table_String extends WP_List_Table {
 	function get_sortable_columns() {
 		return array(
 			'context' => array('context', false),
-			'name'    => array('name', false),
+			// 'name'    => array('name', false),
 			'string'  => array('string', false),
 		);
 	}
